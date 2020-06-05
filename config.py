@@ -106,6 +106,6 @@ test_fp_tp_thresh = 0.5
 test_max_per_image = 100
 
 #test_image_show num
-img_save_num = 50
+img_save_num = 2148
 
 image_output_dir = os.path.join(test_output_path)

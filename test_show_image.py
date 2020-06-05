@@ -42,6 +42,7 @@ class Val_test(object):
                 print (i, ' image test compeleted')
                 train_data = self.val_data.get()  #if you want to change the test image, you can using cv2.imread() here to read your own image data
                 test_data[i] = train_data
+                image = cv2.imread(test_data[i]['imname'])
                 image_height = np.array(train_data['image'].shape[1])
                 image_width = np.array(train_data['image'].shape[2])
                 feed_dict = {self.net.image: train_data['image'], self.net.image_width: image_width,\
@@ -70,7 +71,26 @@ class Val_test(object):
                     cls_pred_target = np.concatenate((cls_pred_box_coord, cls_pred_score), axis=1)
                     keep = py_cpu_nms(cls_pred_target, cfg.test_nms_thresh)
                     cls_pred_target = cls_pred_target[keep, :]
-                    dect_total_result[k][i] = cls_pred_target
+
+                    for h in range(len(cls_pred_target)):
+                        if cls_pred_target[h][4] > 0.5:
+                            x1 = int(cls_pred_target[h][0])
+                            y1 = int(cls_pred_target[h][1])
+                            x2 = int(cls_pred_target[h][2])
+                            y2 = int(cls_pred_target[h][3])
+                            cv2.rectangle(image, (x1, y1), (x2, y2), ((k % 19) * 15, (k % 3) * 100 + 40, (k % 6) * 50 + 35),
+                                          2)
+                            cv2.rectangle(image, (x1, y1 - 20), (x2, y1), (125, 125, 125), -1)
+                            lineType = cv2.LINE_AA if cv2.__version__ > '3' else cv2.CV_AA
+                            cv2.putText(image, cfg.CLASSES[k] + ' : %.2f' % cls_pred_target[h][4], \
+                                        (x1 + 5, y1 - 7), cv2.FONT_HERSHEY_SIMPLEX, 0.5, \
+                                        (0, 0, 0), 1, lineType)
+                if not os.path.exists(self.image_output_dir):
+                    os.mkdir(self.image_output_dir)
+                im_save_path = os.path.join(self.image_output_dir, test_data[i]['imname'].split('/')[-1])
+                cv2.imwrite(im_save_path, image)
+                cv2.imshow('Image', image)
+                cv2.waitKey(0)
 
             for k in range(cfg.img_save_num):
                 imname = test_data[k]['imname']
@@ -84,23 +104,6 @@ class Val_test(object):
                 cv2.imwrite(im_save_path, im)
                 cv2.imshow('Image',im)
                 cv2.waitKey(0)
-
-
-    def draw_result(self, img, result, ind):
-        for i in range(1, self.net.num_classes):
-            for j in range(result[i][ind].shape[0]):
-                if result[i][ind][j][4]>0.5:
-                    x1 = int(result[i][ind][j][0])
-                    y1 = int(result[i][ind][j][1])
-                    x2 = int(result[i][ind][j][2])
-                    y2 = int(result[i][ind][j][3])                    
-                    cv2.rectangle(img, (x1, y1), (x2, y2), ((i%19)*15, (i%3)*100+40, (i%6)*50+35), 2) 
-                    cv2.rectangle(img, (x1, y1-20),(x2, y1), (125, 125, 125), -1)
-                    lineType = cv2.LINE_AA if cv2.__version__ > '3' else cv2.CV_AA
-                    cv2.putText(img, cfg.CLASSES[i] + ' : %.2f' % result[i][ind][j][4],\
-                    (x1 + 5, y1 - 7), cv2.FONT_HERSHEY_SIMPLEX, 0.5,\
-                    (0, 0, 0), 1, lineType)                
-        return img
         
         
     def coord_transform_inv (self, anchors, boxes):
@@ -120,15 +123,7 @@ class Val_test(object):
         coord_x2 = boxes_x + boxes_w*0.5
         coord_y2 = boxes_y + boxes_h*0.5
         coord_result = np.stack([coord_x1, coord_y1, coord_x2, coord_y2], axis=1)
-        return coord_result                  
-    
-
-    def get_var_list(self, global_variables, ckpt_variables):
-        variables_to_restore = []
-        for key in global_variables:
-            if key.name.split(':')[0] in ckpt_variables:
-                variables_to_restore.append(key) 
-        return variables_to_restore
+        return coord_result
     
     
 
